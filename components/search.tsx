@@ -1,22 +1,34 @@
 "use client"
 
-import { useState, type KeyboardEvent } from "react"
+import { useState, useEffect, type KeyboardEvent } from "react"
 import { Command } from "cmdk"
 import { SearchIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useDebounce } from "@/hooks/use-debounce" // <-- Import the hook
 
 export function Search() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [value, setValue] = useState(searchParams.get("q") || "")
+  
+  // Use the debounce hook with a 500ms delay
+  const debouncedSearch = useDebounce(value, 500);
 
   const handleSearch = () => {
     if (value.trim()) {
       router.push(`/search?q=${encodeURIComponent(value.trim())}`)
     }
   }
+
+  useEffect(() => {
+    // Only trigger search when the debounced value changes and is not empty
+    if (debouncedSearch.trim()) {
+      router.push(`/search?q=${encodeURIComponent(debouncedSearch.trim())}`);
+    }
+  }, [debouncedSearch, router]);
+
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -43,7 +55,7 @@ export function Search() {
               value={value}
               onValueChange={setValue}
               onKeyDown={handleKeyDown}
-              placeholder="Search for products across multiple platforms..."
+              placeholder="Search for products on Amazon and Flipkart..."
               className="flex-1 h-14 px-4 text-base bg-transparent outline-none placeholder:text-gray-400"
             />
             <Button
@@ -60,4 +72,3 @@ export function Search() {
     </motion.div>
   )
 }
-
