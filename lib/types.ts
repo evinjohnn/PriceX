@@ -1,15 +1,12 @@
+// lib/types.ts
 export interface Product {
   name: string
   image: string
-  price: string
+  price: string // Keeping as string since we cleaned it up
   rating: string
   reviews: string
   url: string
   platform: "amazon" | "flipkart"
 }
 
-export interface ScrapingResponse {
-  amazon: Product[]
-  flipkart: Product[]
-}
-
+// You can remove ScrapingResponse if you define it directly in the search page
