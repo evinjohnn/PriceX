@@ -12,4 +12,4 @@ google-generativeai
 playwright
 playwright-stealth
 boto3
-python-2captcha-client
+2captcha-python
