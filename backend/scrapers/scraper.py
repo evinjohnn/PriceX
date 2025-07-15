@@ -21,6 +21,360 @@ from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 from playwright_stealth import stealth_async
 from bs4 import BeautifulSoup
 import re
+class ScrapingError(Exception):
+    """Base exception for scraping errors."""
+    pass
+
+class BlockedError(ScrapingError):
+    """Raised when scraping is blocked."""
+    pass
+
+class CaptchaError(ScrapingError):
+    """Raised when CAPTCHA is encountered."""
+    pass
+
+class EnterpriseScrapingSystem:
+    """
+    Enterprise-grade scraping system with multi-tiered anti-blocking architecture.
+    """
+    
+    def __init__(self):
+        """Initialize the scraping system."""
+        self.browser: Optional[Browser] = None
+        self.context: Optional[BrowserContext] = None
+        self.aws_client = None
+        
+        # Initialize AWS client if configured
+        if config.is_aws_configured():
+            self.aws_client = boto3.client(
+                'lambda',
+                region_name=config.AWS_REGION,
+                aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY
+            )
+            logger.info("AWS Lambda client initialized")
+        else:
+            logger.warning("AWS not configured. Tier 2 fallback will be disabled.")
+    
+    def clean_text(self, text: str) -> str:
+        """Clean text by removing non-numeric characters."""
+        return re.sub(r'[^\d.]', '', text).strip() if text else ""
+
+    async def initialize_browser(self) -> None:
+        """Initialize Playwright browser with stealth settings."""
+        try:
+            logger.info("Initializing stealth browser...")
+            
+            playwright = await async_playwright().start()
+            
+            # Get random configuration
+            viewport = config.get_random_viewport()
+            user_agent = config.get_random_user_agent()
+            locale = config.get_random_locale()
+            timezone = config.get_random_timezone()
+            
+            # Launch browser with stealth settings
+            self.browser = await playwright.chromium.launch(
+                headless=config.BROWSER_HEADLESS,
+                slow_mo=config.BROWSER_SLOW_MO,
+                args=[
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu',
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-renderer-backgrounding',
+                    '--disable-features=TranslateUI',
+                    '--disable-web-security',
+                    '--disable-features=VizDisplayCompositor',
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-extensions',
+                    '--disable-plugins',
+                    '--disable-default-apps',
+                    '--disable-sync',
+                    '--disable-translate',
+                    '--disable-logging',
+                    '--disable-permissions-api',
+                    '--disable-notifications',
+                    '--disable-component-extensions-with-background-pages',
+                    '--disable-background-networking',
+                    '--disable-component-update',
+                    '--disable-client-side-phishing-detection',
+                    '--disable-hang-monitor',
+                    '--disable-popup-blocking',
+                    '--disable-prompt-on-repost',
+                    '--disable-domain-reliability',
+                    '--disable-features=VizDisplayCompositor',
+                    '--disable-ipc-flooding-protection',
+                    '--disable-renderer-backgrounding',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-features=TranslateUI',
+                    '--disable-features=BlinkGenPropertyTrees',
+                    '--disable-field-trial-config',
+                    '--disable-back-forward-cache',
+                    '--disable-features=AutomationControlled',
+                    '--exclude-switches=enable-automation',
+                    '--use-mock-keychain',
+                    '--disable-features=ImprovedCookieControls,LazyFrameLoading,GlobalMediaControls,DestroyProfileOnBrowserClose,MediaRouter,DialMediaRouteProvider,AcceptCHFrame,AutoExpandDetailsElement,CertificateTransparencyComponentUpdater,AvoidUnnecessaryBeforeUnloadCheckSync,Translate',
+                ]
+            )
+            
+            # Create context with realistic settings
+            self.context = await self.browser.new_context(
+                viewport=viewport,
+                user_agent=user_agent,
+                locale=locale,
+                timezone_id=timezone,
+                permissions=["geolocation"],
+                extra_http_headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.5",
+                    "Accept-Encoding": "gzip, deflate",
+                    "Connection": "keep-alive",
+                    "Upgrade-Insecure-Requests": "1",
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "none",
+                    "Cache-Control": "max-age=0",
+                    "DNT": "1",
+                    "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": '"Windows"'
+                }
+            )
+            
+            logger.info(f"Browser initialized with viewport {viewport['width']}x{viewport['height']}, locale {locale}")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize browser: {e}")
+            raise ScrapingError(f"Browser initialization failed: {e}")
+
+    async def get_page_content_tier1(self, url: str) -> Optional[str]:
+        """
+        Tier 1: Get page content using stealth Playwright (primary method).
+        
+        Args:
+            url: URL to scrape
+            
+        Returns:
+            HTML content or None if failed
+        """
+        try:
+            logger.info(f"Tier 1: Scraping {url} with stealth browser")
+            
+            if not self.context:
+                await self.initialize_browser()
+            
+            # Create new page
+            page = await self.context.new_page()
+            
+            # Apply stealth settings
+            await stealth_async(page)
+            
+            # Add random delay before request
+            await asyncio.sleep(random.uniform(config.MIN_REQUEST_DELAY, config.MAX_REQUEST_DELAY))
+            
+            # Navigate to URL
+            response = await page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=config.PAGE_LOAD_TIMEOUT * 1000
+            )
+            
+            if not response:
+                raise ScrapingError("Failed to load page")
+            
+            # Wait for page to fully load
+            await page.wait_for_load_state("networkidle", timeout=config.NAVIGATION_TIMEOUT * 1000)
+            
+            # Check for blocking indicators
+            html_content = await page.content()
+            if self._is_blocked(html_content):
+                logger.warning("Tier 1: Page appears to be blocked")
+                await page.close()
+                raise BlockedError("Page blocked by anti-bot measures")
+            
+            # Check for CAPTCHA
+            if captcha_solver.is_configured():
+                captcha_detected = await captcha_solver.detect_captcha(page)
+                if captcha_detected:
+                    logger.info("Tier 1: CAPTCHA detected, attempting to solve...")
+                    if await captcha_solver.solve_captcha_on_page(page):
+                        logger.info("Tier 1: CAPTCHA solved successfully")
+                        # Get updated content after CAPTCHA solving
+                        html_content = await page.content()
+                    else:
+                        logger.error("Tier 1: Failed to solve CAPTCHA")
+                        await page.close()
+                        raise CaptchaError("CAPTCHA solving failed")
+            
+            await page.close()
+            
+            logger.info(f"Tier 1: Successfully scraped {url} ({len(html_content)} chars)")
+            return html_content
+            
+        except (BlockedError, CaptchaError):
+            raise  # Re-raise these specific errors
+        except Exception as e:
+            logger.error(f"Tier 1: Error scraping {url}: {e}")
+            return None
+
+    async def get_page_content_tier2(self, url: str) -> Optional[str]:
+        """
+        Tier 2: Get page content using AWS Lambda (fallback method).
+        
+        Args:
+            url: URL to scrape
+            
+        Returns:
+            HTML content or None if failed
+        """
+        try:
+            logger.info(f"Tier 2: Scraping {url} with AWS Lambda")
+            
+            if not self.aws_client:
+                logger.error("Tier 2: AWS client not configured")
+                return None
+            
+            # Prepare Lambda payload
+            payload = {
+                "url": url,
+                "wait_for_selector": None
+            }
+            
+            # Invoke Lambda function
+            response = self.aws_client.invoke(
+                FunctionName=config.AWS_LAMBDA_FUNCTION_NAME,
+                InvocationType='RequestResponse',
+                Payload=json.dumps(payload)
+            )
+            
+            # Parse response
+            response_payload = json.loads(response['Payload'].read())
+            
+            if response_payload.get('statusCode') == 200:
+                result = json.loads(response_payload['body'])
+                
+                if result.get('success'):
+                    html_content = result.get('html_content')
+                    
+                    if self._is_blocked(html_content):
+                        logger.warning("Tier 2: Page appears to be blocked")
+                        raise BlockedError("Page blocked by anti-bot measures")
+                    
+                    logger.info(f"Tier 2: Successfully scraped {url} ({len(html_content)} chars)")
+                    return html_content
+                else:
+                    logger.error(f"Tier 2: Lambda scraping failed: {result.get('error')}")
+                    return None
+            else:
+                logger.error(f"Tier 2: Lambda invocation failed: {response_payload}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Tier 2: Error scraping {url}: {e}")
+            return None
+
+    def _is_blocked(self, html_content: str) -> bool:
+        """Check if page content indicates blocking."""
+        if not html_content:
+            return True
+        
+        blocking_indicators = [
+            "captcha",
+            "blocked",
+            "access denied",
+            "forbidden",
+            "rate limit",
+            "security check",
+            "unusual traffic",
+            "automated queries",
+            "robot",
+            "bot detection",
+            "please verify",
+            "temporarily blocked",
+            "suspicious activity"
+        ]
+        
+        content_lower = html_content.lower()
+        return any(indicator in content_lower for indicator in blocking_indicators)
+
+    async def get_page_content_resiliently(self, url: str) -> str:
+        """
+        Get page content using multi-tiered resilient approach.
+        
+        Args:
+            url: URL to scrape
+            
+        Returns:
+            HTML content
+            
+        Raises:
+            ScrapingError: If all tiers fail
+        """
+        last_error = None
+        
+        for attempt in range(config.MAX_RETRY_ATTEMPTS):
+            try:
+                logger.info(f"Resilient scraping attempt {attempt + 1}/{config.MAX_RETRY_ATTEMPTS} for {url}")
+                
+                # Tier 1: Stealth Browser (Primary)
+                try:
+                    html_content = await self.get_page_content_tier1(url)
+                    if html_content:
+                        return html_content
+                except (BlockedError, CaptchaError) as e:
+                    logger.warning(f"Tier 1 failed: {e}")
+                    last_error = e
+                
+                # Tier 2: AWS Lambda (Fallback)
+                if self.aws_client:
+                    try:
+                        html_content = await self.get_page_content_tier2(url)
+                        if html_content:
+                            return html_content
+                    except Exception as e:
+                        logger.warning(f"Tier 2 failed: {e}")
+                        last_error = e
+                
+                # If we get here, both tiers failed
+                if attempt < config.MAX_RETRY_ATTEMPTS - 1:
+                    delay = min(config.RETRY_DELAY_BASE ** (attempt + 1), config.RETRY_DELAY_MAX)
+                    logger.info(f"All tiers failed, retrying in {delay} seconds...")
+                    await asyncio.sleep(delay)
+                
+            except Exception as e:
+                logger.error(f"Unexpected error in resilient scraping: {e}")
+                last_error = e
+                
+                if attempt < config.MAX_RETRY_ATTEMPTS - 1:
+                    delay = min(config.RETRY_DELAY_BASE ** (attempt + 1), config.RETRY_DELAY_MAX)
+                    await asyncio.sleep(delay)
+        
+        # All attempts failed
+        error_msg = f"Failed to scrape {url} after {config.MAX_RETRY_ATTEMPTS} attempts"
+        if last_error:
+            error_msg += f". Last error: {last_error}"
+        
+        raise ScrapingError(error_msg)
+
+    async def close(self) -> None:
+        """Clean up browser resources."""
+        try:
+            if self.context:
+                await self.context.close()
+            if self.browser:
+                await self.browser.close()
+            logger.info("Browser resources cleaned up")
+        except Exception as e:
+            logger.error(f"Error closing browser: {e}")
+
+# Global scraper instance
+enterprise_scraper = EnterpriseScrapingSystem()
 
 from database import add_product_if_not_exists, add_price_entry
 from config import config
