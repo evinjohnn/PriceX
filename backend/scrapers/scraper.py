@@ -97,67 +97,174 @@ def scrape_with_proxy(url: str, max_retries: int = 5) -> str:
     raise ScrapingFailedError(f"Failed to scrape {url} after {max_retries} attempts")
 
 def process_amazon_search(query: str, max_products=5):
-    """Scrapes Amazon search results using the new robust method."""
-    print(f"Processing Amazon search for: '{query}'")
-    search_url = f"https://www.amazon.in/s?k={query.replace(' ', '+')}"
-    html = scrape_with_proxy(search_url)
-    if not html: return
-
-    soup = BeautifulSoup(html, 'html.parser')
-    results = soup.select('div[data-component-type="s-search-result"]')
-    print(f"Found {len(results)} products on Amazon page.")
-
-    for item in results[:max_products]:
-        asin = item.get('data-asin')
-        if not asin: continue
-
-        title = item.select_one('span.a-text-normal')
-        price = item.select_one('.a-price-whole')
-        url = item.select_one('a.a-link-normal')
-        image = item.select_one('img.s-image')
-
-        if not all([title, price, url, image]): continue
-
-        product_id = add_product_if_not_exists(asin, title.text, f"https://www.amazon.in{url['href']}")
-        if product_id:
-            add_price_entry(product_id, float(clean_text(price.text)), "In Stock", image['src'])
-        print(f"Saved from Amazon: {title.text[:30]}...")
+    """Scrapes Amazon search results using the intelligent proxy system."""
+    logger.info(f"Processing Amazon search for: '{query}'")
+    
+    try:
+        search_url = f"https://www.amazon.in/s?k={query.replace(' ', '+')}"
+        html = scrape_with_proxy(search_url)
+        
+        if not html:
+            logger.error(f"Failed to scrape Amazon search for: {query}")
+            return
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        results = soup.select('div[data-component-type="s-search-result"]')
+        logger.info(f"Found {len(results)} products on Amazon page.")
+        
+        products_processed = 0
+        for item in results:
+            if products_processed >= max_products:
+                break
+                
+            try:
+                asin = item.get('data-asin')
+                if not asin:
+                    continue
+                
+                title = item.select_one('span.a-text-normal')
+                price = item.select_one('.a-price-whole')
+                url = item.select_one('a.a-link-normal')
+                image = item.select_one('img.s-image')
+                
+                if not all([title, price, url, image]):
+                    continue
+                
+                # Clean and validate data
+                title_text = title.text.strip()
+                price_text = clean_text(price.text)
+                
+                if not title_text or not price_text:
+                    continue
+                
+                try:
+                    price_float = float(price_text)
+                except ValueError:
+                    continue
+                
+                product_url = f"https://www.amazon.in{url['href']}"
+                image_url = image.get('src', '')
+                
+                # Save to database
+                product_id = add_product_if_not_exists(asin, title_text, product_url)
+                if product_id:
+                    add_price_entry(product_id, price_float, "In Stock", image_url)
+                    products_processed += 1
+                    logger.info(f"Saved Amazon product: {title_text[:50]}...")
+                
+            except Exception as e:
+                logger.error(f"Error processing Amazon product: {e}")
+                continue
+        
+        logger.info(f"Successfully processed {products_processed} Amazon products")
+        
+    except ScrapingFailedError as e:
+        logger.error(f"Amazon scraping failed: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error in Amazon search: {e}")
 
 def process_flipkart_search(query: str, max_products=5):
-    """Scrapes Flipkart search results using logic inspired by the repository."""
-    print(f"Processing Flipkart search for: '{query}'")
-    search_url = f"https://www.flipkart.com/search?q={query.replace(' ', '+')}"
-    html = scrape_with_proxy(search_url)
-    if not html: return
-
-    soup = BeautifulSoup(html, 'html.parser')
+    """Scrapes Flipkart search results using the intelligent proxy system."""
+    logger.info(f"Processing Flipkart search for: '{query}'")
     
-    # Use a list of potential selectors from the provided repository
-    product_selectors = ['div._1xHGtK._373qXS', 'div._4ddWXP', 'div.slAVV4', 'div._1UoZlX']
-    results = []
-    for selector in product_selectors:
-        results = soup.select(selector)
-        if results:
-            break
-    
-    print(f"Found {len(results)} products on Flipkart page.")
-
-    for item in results[:max_products]:
-        title_element = item.select_one('a.s1Q9rs, ._4rR01T, a.IRpwTa, ._2WkVRV')
-        price_element = item.select_one('div._30jeq3')
-        url_element = item.select_one('a.s1Q9rs, a._1fQZEK, a.IRpwTa')
-        image_element = item.select_one('img._396cs4')
-
-        if not all([title_element, price_element, url_element, image_element]):
-            continue
-
-        title = title_element.get_text(strip=True)
-        price = float(clean_text(price_element.get_text(strip=True)))
-        product_url = f"https://www.flipkart.com{url_element['href']}"
-        image_url = image_element['src']
-        unique_id = product_url.split('?pid=')[1].split('&')[0] if '?pid=' in product_url else product_url
-
-        product_id = add_product_if_not_exists(unique_id, title, product_url)
-        if product_id:
-            add_price_entry(product_id, price, "In Stock", image_url)
-        print(f"Saved from Flipkart: {title[:30]}...")
+    try:
+        search_url = f"https://www.flipkart.com/search?q={query.replace(' ', '+')}"
+        html = scrape_with_proxy(search_url)
+        
+        if not html:
+            logger.error(f"Failed to scrape Flipkart search for: {query}")
+            return
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Use multiple selectors to handle different page layouts
+        product_selectors = [
+            'div._1xHGtK._373qXS', 
+            'div._4ddWXP', 
+            'div.slAVV4', 
+            'div._1UoZlX',
+            'div._13oc-S',
+            'div._3pLy-c'
+        ]
+        
+        results = []
+        for selector in product_selectors:
+            results = soup.select(selector)
+            if results:
+                break
+        
+        logger.info(f"Found {len(results)} products on Flipkart page.")
+        
+        products_processed = 0
+        for item in results:
+            if products_processed >= max_products:
+                break
+                
+            try:
+                # Try multiple selectors for different elements
+                title_selectors = ['a.s1Q9rs', 'a._1fQZEK', 'a.IRpwTa', 'a._2WkVRV', 'div._4rR01T']
+                title_element = None
+                for selector in title_selectors:
+                    title_element = item.select_one(selector)
+                    if title_element:
+                        break
+                
+                price_selectors = ['div._30jeq3', 'div._1_WHN1', 'div._3tbHP2']
+                price_element = None
+                for selector in price_selectors:
+                    price_element = item.select_one(selector)
+                    if price_element:
+                        break
+                
+                url_selectors = ['a.s1Q9rs', 'a._1fQZEK', 'a.IRpwTa']
+                url_element = None
+                for selector in url_selectors:
+                    url_element = item.select_one(selector)
+                    if url_element:
+                        break
+                
+                image_selectors = ['img._396cs4', 'img._2r_T1I', 'img._3exPp9']
+                image_element = None
+                for selector in image_selectors:
+                    image_element = item.select_one(selector)
+                    if image_element:
+                        break
+                
+                if not all([title_element, price_element, url_element, image_element]):
+                    continue
+                
+                # Extract and clean data
+                title = title_element.get_text(strip=True)
+                price_text = clean_text(price_element.get_text(strip=True))
+                
+                if not title or not price_text:
+                    continue
+                
+                try:
+                    price_float = float(price_text)
+                except ValueError:
+                    continue
+                
+                product_url = f"https://www.flipkart.com{url_element['href']}"
+                image_url = image_element.get('src', '')
+                
+                # Extract unique ID from URL
+                unique_id = product_url.split('?pid=')[1].split('&')[0] if '?pid=' in product_url else product_url
+                
+                # Save to database
+                product_id = add_product_if_not_exists(unique_id, title, product_url)
+                if product_id:
+                    add_price_entry(product_id, price_float, "In Stock", image_url)
+                    products_processed += 1
+                    logger.info(f"Saved Flipkart product: {title[:50]}...")
+                
+            except Exception as e:
+                logger.error(f"Error processing Flipkart product: {e}")
+                continue
+        
+        logger.info(f"Successfully processed {products_processed} Flipkart products")
+        
+    except ScrapingFailedError as e:
+        logger.error(f"Flipkart scraping failed: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error in Flipkart search: {e}")
