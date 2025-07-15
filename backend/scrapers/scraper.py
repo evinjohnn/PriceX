@@ -2,35 +2,99 @@ import requests
 import os
 from bs4 import BeautifulSoup
 import re
+import time
+import random
+import logging
 from database import add_product_if_not_exists, add_price_entry
-from fake_useragent import UserAgent
+from proxy_pool_manager import get_proxy_manager
+from utils import get_random_user_agent, get_common_headers, create_proxy_dict, ScrapingFailedError
 
-ua = UserAgent()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def clean_text(text):
     return re.sub(r'[^\d.]', '', text).strip() if text else ""
 
-def scrape_with_proxy(url: str):
-    """Scrapes a URL using the ScrapingBee proxy service."""
-    api_key = os.getenv("SCRAPINGBEE_API_KEY")
-    if not api_key:
-        print("Error: SCRAPINGBEE_API_KEY is not set.")
-        return None
-        
-    params = {
-        "api_key": api_key,
-        "url": url,
-        "render_js": "true",
-        "country_code": "in",
-        # We can add more sophisticated proxy options here later if needed
-    }
-    response = requests.get("https://app.scrapingbee.com/api/v1/", params=params)
+def scrape_with_proxy(url: str, max_retries: int = 5) -> str:
+    """
+    Scrapes a URL using the intelligent proxy management system.
     
-    if response.status_code == 200:
-        return response.text
-    else:
-        print(f"Scraping failed for {url}. Status: {response.status_code}, Response: {response.text}")
-        return None
+    Args:
+        url: URL to scrape
+        max_retries: Maximum number of retry attempts
+        
+    Returns:
+        HTML content as string
+        
+    Raises:
+        ScrapingFailedError: If all retries fail
+    """
+    proxy_manager = get_proxy_manager()
+    
+    for attempt in range(max_retries):
+        proxy = None
+        try:
+            # Get a proxy from the pool
+            proxy = proxy_manager.get_proxy()
+            if not proxy:
+                logger.warning(f"No proxy available for attempt {attempt + 1}/{max_retries}")
+                time.sleep(random.uniform(1, 3))
+                continue
+            
+            # Get headers with random user agent
+            headers = get_common_headers()
+            
+            # Configure proxy for requests
+            proxy_dict = create_proxy_dict(proxy)
+            
+            logger.debug(f"Attempt {attempt + 1}/{max_retries}: Using proxy {proxy}")
+            
+            # Make the request
+            response = requests.get(
+                url,
+                proxies=proxy_dict,
+                headers=headers,
+                timeout=15,
+                verify=False  # Skip SSL verification for proxy requests
+            )
+            
+            # Check if request was successful
+            if response.status_code == 200:
+                # Return proxy to pool for reuse
+                proxy_manager.return_proxy(proxy)
+                logger.debug(f"Successfully scraped {url} using proxy {proxy}")
+                return response.text
+            else:
+                # Non-200 status code, report proxy as failed
+                logger.warning(f"HTTP {response.status_code} from {url} using proxy {proxy}")
+                proxy_manager.report_failed_proxy(proxy)
+                
+        except requests.exceptions.ProxyError as e:
+            logger.warning(f"Proxy error with {proxy}: {e}")
+            if proxy:
+                proxy_manager.report_failed_proxy(proxy)
+        except requests.exceptions.Timeout as e:
+            logger.warning(f"Timeout with proxy {proxy}: {e}")
+            if proxy:
+                proxy_manager.report_failed_proxy(proxy)
+        except requests.exceptions.ConnectionError as e:
+            logger.warning(f"Connection error with proxy {proxy}: {e}")
+            if proxy:
+                proxy_manager.report_failed_proxy(proxy)
+        except Exception as e:
+            logger.error(f"Unexpected error with proxy {proxy}: {e}")
+            if proxy:
+                proxy_manager.report_failed_proxy(proxy)
+        
+        # Add delay between retries
+        if attempt < max_retries - 1:
+            delay = random.uniform(1, 3) * (attempt + 1)  # Exponential backoff
+            logger.info(f"Retrying in {delay:.1f} seconds...")
+            time.sleep(delay)
+    
+    # All retries failed
+    raise ScrapingFailedError(f"Failed to scrape {url} after {max_retries} attempts")
 
 def process_amazon_search(query: str, max_products=5):
     """Scrapes Amazon search results using the new robust method."""
