@@ -1,7 +1,7 @@
 from celery import Celery
 import os
 from dotenv import load_dotenv
-from scrapers.scraper import process_amazon_search, process_flipkart_search
+from scrapers.scraper import sync_process_amazon_search, sync_process_flipkart_search
 
 load_dotenv()
 
@@ -19,8 +19,8 @@ celery_app.conf.update(broker_connection_retry_on_startup=True)
 @celery_app.task(name="create_scrape_task")
 def create_scrape_task(query: str):
     print(f"WORKER: Received job for query: '{query}'")
-    process_amazon_search(query)
-    process_flipkart_search(query)
+    sync_process_amazon_search(query)
+    sync_process_flipkart_search(query)
     return f"Scraping complete for {query}"
 
-print("Celery worker configured.")
+print("Celery worker configured with enterprise scraping system.")
