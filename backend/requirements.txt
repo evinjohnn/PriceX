@@ -9,3 +9,4 @@ requests
 fake-useragent
 celery
 redis
+google-generativeai
