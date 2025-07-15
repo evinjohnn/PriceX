@@ -6,7 +6,10 @@ sqlalchemy
 psycopg2-binary
 waitress
 requests
-fake-useragent
 celery
 redis
 google-generativeai
+playwright
+playwright-stealth
+boto3
+python-2captcha-client
