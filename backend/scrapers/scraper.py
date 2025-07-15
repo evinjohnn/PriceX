@@ -465,37 +465,25 @@ async def process_amazon_search(query: str, max_products: int = 5):
         # Clean up browser resources
         await enterprise_scraper.close()
 
-def process_flipkart_search(query: str, max_products=5):
-    """Scrapes Flipkart search results using the intelligent proxy system."""
+async def process_flipkart_search(query: str, max_products: int = 5):
+    """Enhanced Flipkart search processing with enterprise scraping."""
     logger.info(f"Processing Flipkart search for: '{query}'")
     
     try:
         search_url = f"https://www.flipkart.com/search?q={query.replace(' ', '+')}"
-        html = scrape_with_proxy(search_url)
-        
-        if not html:
-            logger.error(f"Failed to scrape Flipkart search for: {query}")
-            return
+        html = await enterprise_scraper.get_page_content_resiliently(search_url)
         
         soup = BeautifulSoup(html, 'html.parser')
+        selectors = config.get_site_selectors('flipkart')
         
-        # Use multiple selectors to handle different page layouts
-        product_selectors = [
-            'div._1xHGtK._373qXS', 
-            'div._4ddWXP', 
-            'div.slAVV4', 
-            'div._1UoZlX',
-            'div._13oc-S',
-            'div._3pLy-c'
-        ]
-        
+        # Try multiple selectors for product containers
         results = []
-        for selector in product_selectors:
+        for selector in selectors['search_results']:
             results = soup.select(selector)
             if results:
                 break
         
-        logger.info(f"Found {len(results)} products on Flipkart page.")
+        logger.info(f"Found {len(results)} products on Flipkart page")
         
         products_processed = 0
         for item in results:
@@ -503,31 +491,27 @@ def process_flipkart_search(query: str, max_products=5):
                 break
                 
             try:
-                # Try multiple selectors for different elements
-                title_selectors = ['a.s1Q9rs', 'a._1fQZEK', 'a.IRpwTa', 'a._2WkVRV', 'div._4rR01T']
+                # Try multiple selectors for each element
                 title_element = None
-                for selector in title_selectors:
+                for selector in selectors['title']:
                     title_element = item.select_one(selector)
                     if title_element:
                         break
                 
-                price_selectors = ['div._30jeq3', 'div._1_WHN1', 'div._3tbHP2']
                 price_element = None
-                for selector in price_selectors:
+                for selector in selectors['price']:
                     price_element = item.select_one(selector)
                     if price_element:
                         break
                 
-                url_selectors = ['a.s1Q9rs', 'a._1fQZEK', 'a.IRpwTa']
                 url_element = None
-                for selector in url_selectors:
+                for selector in selectors['url']:
                     url_element = item.select_one(selector)
                     if url_element:
                         break
                 
-                image_selectors = ['img._396cs4', 'img._2r_T1I', 'img._3exPp9']
                 image_element = None
-                for selector in image_selectors:
+                for selector in selectors['image']:
                     image_element = item.select_one(selector)
                     if image_element:
                         break
@@ -537,7 +521,7 @@ def process_flipkart_search(query: str, max_products=5):
                 
                 # Extract and clean data
                 title = title_element.get_text(strip=True)
-                price_text = clean_text(price_element.get_text(strip=True))
+                price_text = enterprise_scraper.clean_text(price_element.get_text(strip=True))
                 
                 if not title or not price_text:
                     continue
@@ -566,7 +550,39 @@ def process_flipkart_search(query: str, max_products=5):
         
         logger.info(f"Successfully processed {products_processed} Flipkart products")
         
-    except ScrapingFailedError as e:
+    except ScrapingError as e:
         logger.error(f"Flipkart scraping failed: {e}")
     except Exception as e:
         logger.error(f"Unexpected error in Flipkart search: {e}")
+    finally:
+        # Clean up browser resources
+        await enterprise_scraper.close()
+
+# Synchronous wrappers for Celery compatibility
+def sync_process_amazon_search(query: str, max_products: int = 5):
+    """Synchronous wrapper for Amazon search processing."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(process_amazon_search(query, max_products))
+    finally:
+        loop.close()
+
+def sync_process_flipkart_search(query: str, max_products: int = 5):
+    """Synchronous wrapper for Flipkart search processing."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(process_flipkart_search(query, max_products))
+    finally:
+        loop.close()
+
+# Update exports for backward compatibility
+__all__ = [
+    'scrape_with_proxy',
+    'process_amazon_search',
+    'process_flipkart_search',
+    'sync_process_amazon_search',
+    'sync_process_flipkart_search',
+    'enterprise_scraper'
+]
