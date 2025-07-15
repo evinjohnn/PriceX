@@ -1,76 +1,16 @@
 """
-Utility functions for the scraping system.
+Utility functions for the enterprise scraping system.
 
 This module provides common utility functions used across the scraping
-infrastructure, including user agent generation and request helpers.
+infrastructure, including enhanced browser profile generation and configuration.
 """
 import random
-from fake_useragent import UserAgent
 import logging
+from config import config
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=getattr(logging, config.LOG_LEVEL), format=config.LOG_FORMAT)
 logger = logging.getLogger(__name__)
-
-class UserAgentManager:
-    """
-    Manages user agent generation for requests.
-    """
-    
-    def __init__(self):
-        """
-        Initialize the user agent manager.
-        """
-        try:
-            self.ua = UserAgent()
-            logger.info("UserAgent initialized successfully")
-        except Exception as e:
-            logger.warning(f"Failed to initialize UserAgent: {e}")
-            self.ua = None
-            
-            # Fallback user agents
-            self.fallback_agents = [
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0',
-                'Mozilla/5.0 (X11; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0',
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/91.0.864.59'
-            ]
-    
-    def get_random_user_agent(self) -> str:
-        """
-        Generate a random user agent string.
-        
-        Returns:
-            A random user agent string
-        """
-        try:
-            if self.ua:
-                # Try different browsers
-                browsers = ['chrome', 'firefox', 'safari', 'edge']
-                browser = random.choice(browsers)
-                
-                if browser == 'chrome':
-                    return self.ua.chrome
-                elif browser == 'firefox':
-                    return self.ua.firefox
-                elif browser == 'safari':
-                    return self.ua.safari
-                else:
-                    return self.ua.random
-            else:
-                # Use fallback
-                return random.choice(self.fallback_agents)
-                
-        except Exception as e:
-            logger.warning(f"Error generating user agent: {e}")
-            return random.choice(self.fallback_agents)
-
-# Global user agent manager instance
-_ua_manager = UserAgentManager()
 
 def get_random_user_agent() -> str:
     """
@@ -79,14 +19,41 @@ def get_random_user_agent() -> str:
     Returns:
         A random user agent string
     """
-    return _ua_manager.get_random_user_agent()
+    return config.get_random_user_agent()
 
-def get_common_headers() -> dict:
+def get_random_viewport() -> dict:
     """
-    Get common headers for web requests.
+    Get a random viewport configuration.
     
     Returns:
-        Dictionary of common HTTP headers
+        Dictionary with width and height
+    """
+    return config.get_random_viewport()
+
+def get_random_locale() -> str:
+    """
+    Get a random locale.
+    
+    Returns:
+        Locale string
+    """
+    return config.get_random_locale()
+
+def get_random_timezone() -> str:
+    """
+    Get a random timezone.
+    
+    Returns:
+        Timezone string
+    """
+    return config.get_random_timezone()
+
+def get_enhanced_headers() -> dict:
+    """
+    Get enhanced headers for requests.
+    
+    Returns:
+        Dictionary of HTTP headers
     """
     return {
         'User-Agent': get_random_user_agent(),
@@ -98,7 +65,11 @@ def get_common_headers() -> dict:
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
-        'Cache-Control': 'max-age=0'
+        'Cache-Control': 'max-age=0',
+        'DNT': '1',
+        'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"'
     }
 
 def get_mobile_headers() -> dict:
@@ -109,9 +80,9 @@ def get_mobile_headers() -> dict:
         Dictionary of mobile-specific HTTP headers
     """
     mobile_user_agents = [
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
     ]
     
     return {
@@ -124,68 +95,54 @@ def get_mobile_headers() -> dict:
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
-        'Cache-Control': 'max-age=0'
+        'Cache-Control': 'max-age=0',
+        'DNT': '1',
+        'sec-ch-ua-mobile': '?1'
     }
 
-def validate_proxy_format(proxy: str) -> bool:
+def get_browser_profile() -> dict:
     """
-    Validate if a proxy string is in the correct format.
+    Get a complete browser profile for realistic browsing.
     
-    Args:
-        proxy: Proxy string to validate
-        
     Returns:
-        True if proxy format is valid, False otherwise
-    """
-    import re
-    
-    # Check for IP:PORT format
-    pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):\d{1,5}$'
-    return re.match(pattern, proxy) is not None
-
-def create_proxy_dict(proxy: str) -> dict:
-    """
-    Create a proxy dictionary for use with requests.
-    
-    Args:
-        proxy: Proxy string in format "ip:port"
-        
-    Returns:
-        Dictionary formatted for requests library
+        Dictionary with complete browser configuration
     """
     return {
-        'http': f'http://{proxy}',
-        'https': f'https://{proxy}'
+        'viewport': get_random_viewport(),
+        'user_agent': get_random_user_agent(),
+        'locale': get_random_locale(),
+        'timezone': get_random_timezone(),
+        'headers': get_enhanced_headers()
     }
 
-class ScrapingFailedError(Exception):
+class EnterpriseScrapingError(Exception):
     """
-    Custom exception for when scraping fails after all retries.
+    Custom exception for enterprise scraping errors.
     """
     pass
 
 if __name__ == "__main__":
     # Test the module
-    print("Testing utility functions:")
+    print("Testing enterprise utility functions:")
     
     print("\n1. User Agent Generation:")
     for i in range(3):
         ua = get_random_user_agent()
         print(f"  {i+1}. {ua}")
     
-    print("\n2. Common Headers:")
-    headers = get_common_headers()
-    for key, value in headers.items():
+    print("\n2. Random Viewport:")
+    for i in range(3):
+        viewport = get_random_viewport()
+        print(f"  {i+1}. {viewport['width']}x{viewport['height']}")
+    
+    print("\n3. Enhanced Headers:")
+    headers = get_enhanced_headers()
+    for key, value in list(headers.items())[:5]:  # Show first 5
         print(f"  {key}: {value}")
     
-    print("\n3. Proxy Validation:")
-    test_proxies = [
-        "192.168.1.1:8080",  # Valid format
-        "invalid:proxy",      # Invalid format
-        "1.2.3.4:99999",     # Valid format (high port)
-        "256.1.1.1:8080"     # Invalid IP
-    ]
-    
-    for proxy in test_proxies:
-        valid = validate_proxy_format(proxy)
-        print(f"  {proxy}: {'Valid' if valid else 'Invalid'}")
+    print("\n4. Complete Browser Profile:")
+    profile = get_browser_profile()
+    print(f"  Viewport: {profile['viewport']}")
+    print(f"  Locale: {profile['locale']}")
+    print(f"  Timezone: {profile['timezone']}")
+    print(f"  User Agent: {profile['user_agent'][:50]}...")
