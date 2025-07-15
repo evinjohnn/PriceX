@@ -1,16 +1,35 @@
+"""
+Enterprise-Grade Web Scraping System with Multi-Tiered Anti-Blocking Architecture
+
+This module implements a sophisticated, resilient web scraping system with:
+- Tier 1: Stealth Playwright browser automation (primary)
+- Tier 2: AWS Lambda serverless IP rotation (fallback)
+- Tier 3: Automated CAPTCHA solving (final escalation)
+
+The system provides enterprise-grade reliability for scraping e-commerce sites
+like Amazon and Flipkart with advanced anti-detection capabilities.
+"""
+import asyncio
+import json
+import logging
+import random
+import time
 import requests
-import os
+from typing import Optional, Dict, Any, List
+import boto3
+from playwright.async_api import async_playwright, Browser, BrowserContext, Page
+from playwright_stealth import stealth_async
 from bs4 import BeautifulSoup
 import re
-import time
-import random
-import logging
+
 from database import add_product_if_not_exists, add_price_entry
+from config import config
+from captcha_solver import captcha_solver
 from proxy_pool_manager import get_proxy_manager
 from utils import get_random_user_agent, get_common_headers, create_proxy_dict, ScrapingFailedError
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=getattr(logging, config.LOG_LEVEL), format=config.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
 def clean_text(text):
