@@ -389,101 +389,27 @@ logger = logging.getLogger(__name__)
 def clean_text(text):
     return re.sub(r'[^\d.]', '', text).strip() if text else ""
 
-def scrape_with_proxy(url: str, max_retries: int = 5) -> str:
+# Wrapper function for backward compatibility
+async def scrape_with_proxy(url: str, max_retries: int = None) -> str:
     """
-    Scrapes a URL using the intelligent proxy management system.
-    
-    Args:
-        url: URL to scrape
-        max_retries: Maximum number of retry attempts
-        
-    Returns:
-        HTML content as string
-        
-    Raises:
-        ScrapingFailedError: If all retries fail
+    Legacy wrapper for backward compatibility.
+    Now uses the enterprise scraping system.
     """
-    proxy_manager = get_proxy_manager()
-    
-    for attempt in range(max_retries):
-        proxy = None
-        try:
-            # Get a proxy from the pool
-            proxy = proxy_manager.get_proxy()
-            if not proxy:
-                logger.warning(f"No proxy available for attempt {attempt + 1}/{max_retries}")
-                time.sleep(random.uniform(1, 3))
-                continue
-            
-            # Get headers with random user agent
-            headers = get_common_headers()
-            
-            # Configure proxy for requests
-            proxy_dict = create_proxy_dict(proxy)
-            
-            logger.debug(f"Attempt {attempt + 1}/{max_retries}: Using proxy {proxy}")
-            
-            # Make the request
-            response = requests.get(
-                url,
-                proxies=proxy_dict,
-                headers=headers,
-                timeout=15,
-                verify=False  # Skip SSL verification for proxy requests
-            )
-            
-            # Check if request was successful
-            if response.status_code == 200:
-                # Return proxy to pool for reuse
-                proxy_manager.return_proxy(proxy)
-                logger.debug(f"Successfully scraped {url} using proxy {proxy}")
-                return response.text
-            else:
-                # Non-200 status code, report proxy as failed
-                logger.warning(f"HTTP {response.status_code} from {url} using proxy {proxy}")
-                proxy_manager.report_failed_proxy(proxy)
-                
-        except requests.exceptions.ProxyError as e:
-            logger.warning(f"Proxy error with {proxy}: {e}")
-            if proxy:
-                proxy_manager.report_failed_proxy(proxy)
-        except requests.exceptions.Timeout as e:
-            logger.warning(f"Timeout with proxy {proxy}: {e}")
-            if proxy:
-                proxy_manager.report_failed_proxy(proxy)
-        except requests.exceptions.ConnectionError as e:
-            logger.warning(f"Connection error with proxy {proxy}: {e}")
-            if proxy:
-                proxy_manager.report_failed_proxy(proxy)
-        except Exception as e:
-            logger.error(f"Unexpected error with proxy {proxy}: {e}")
-            if proxy:
-                proxy_manager.report_failed_proxy(proxy)
-        
-        # Add delay between retries
-        if attempt < max_retries - 1:
-            delay = random.uniform(1, 3) * (attempt + 1)  # Exponential backoff
-            logger.info(f"Retrying in {delay:.1f} seconds...")
-            time.sleep(delay)
-    
-    # All retries failed
-    raise ScrapingFailedError(f"Failed to scrape {url} after {max_retries} attempts")
+    return await enterprise_scraper.get_page_content_resiliently(url)
 
-def process_amazon_search(query: str, max_products=5):
-    """Scrapes Amazon search results using the intelligent proxy system."""
+async def process_amazon_search(query: str, max_products: int = 5):
+    """Enhanced Amazon search processing with enterprise scraping."""
     logger.info(f"Processing Amazon search for: '{query}'")
     
     try:
         search_url = f"https://www.amazon.in/s?k={query.replace(' ', '+')}"
-        html = scrape_with_proxy(search_url)
-        
-        if not html:
-            logger.error(f"Failed to scrape Amazon search for: {query}")
-            return
+        html = await enterprise_scraper.get_page_content_resiliently(search_url)
         
         soup = BeautifulSoup(html, 'html.parser')
-        results = soup.select('div[data-component-type="s-search-result"]')
-        logger.info(f"Found {len(results)} products on Amazon page.")
+        selectors = config.get_site_selectors('amazon')
+        results = soup.select(selectors['search_results'])
+        
+        logger.info(f"Found {len(results)} products on Amazon page")
         
         products_processed = 0
         for item in results:
@@ -495,17 +421,17 @@ def process_amazon_search(query: str, max_products=5):
                 if not asin:
                     continue
                 
-                title = item.select_one('span.a-text-normal')
-                price = item.select_one('.a-price-whole')
-                url = item.select_one('a.a-link-normal')
-                image = item.select_one('img.s-image')
+                title = item.select_one(selectors['title'])
+                price = item.select_one(selectors['price'])
+                url = item.select_one(selectors['url'])
+                image = item.select_one(selectors['image'])
                 
                 if not all([title, price, url, image]):
                     continue
                 
                 # Clean and validate data
                 title_text = title.text.strip()
-                price_text = clean_text(price.text)
+                price_text = enterprise_scraper.clean_text(price.text)
                 
                 if not title_text or not price_text:
                     continue
@@ -531,10 +457,13 @@ def process_amazon_search(query: str, max_products=5):
         
         logger.info(f"Successfully processed {products_processed} Amazon products")
         
-    except ScrapingFailedError as e:
+    except ScrapingError as e:
         logger.error(f"Amazon scraping failed: {e}")
     except Exception as e:
         logger.error(f"Unexpected error in Amazon search: {e}")
+    finally:
+        # Clean up browser resources
+        await enterprise_scraper.close()
 
 def process_flipkart_search(query: str, max_products=5):
     """Scrapes Flipkart search results using the intelligent proxy system."""
