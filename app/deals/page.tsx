@@ -3,7 +3,7 @@
 import { Navbar } from "@/components/navbar";
 import { TweetCard } from "@/components/tweet-card";
 import { Toaster } from "@/components/ui/toaster";
-import Silk from "@/components/ui/backgrounds/Silk";
+import SilkBackground from "@/components/ui/backgrounds/SilkBackground";
 import CurvedLoop from "@/components/ui/text-animations/CurvedLoop";
 
 // Define the type for a single deal post
