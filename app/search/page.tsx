@@ -91,6 +91,7 @@ export default function SearchPage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <Navbar />
+            <Silk color="#f8fafc" speed={3} scale={2} noiseIntensity={0.8} />
             <main className="pt-24 pb-12">
                 <div className="container mx-auto px-4">
                     <motion.div 
@@ -151,6 +152,13 @@ export default function SearchPage() {
                     )}
                 </div>
             </main>
+            <CurvedLoop 
+                marqueeText="🔥 Best Deals • 💰 Save More • 🛒 Shop Smart • ⚡ Flash Sale • 🎯 Top Prices • 🏆 Trending Now "
+                speed={1.5}
+                curveAmount={300}
+                inverted={true}
+                className="fill-gray-800"
+            />
             <Toaster />
         </div>
     )
