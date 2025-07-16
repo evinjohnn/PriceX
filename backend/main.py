@@ -6,8 +6,9 @@ from celery import Celery
 import os
 from dotenv import load_dotenv
 import threading
-
-# REMOVED the problematic import line. It's not needed here.
+from deal_fetcher import get_latest_deals
+from functools import lru_cache
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -56,6 +57,51 @@ def get_results():
         return jsonify(scraped_data)
     else:
         return jsonify({"status": "pending"}), 202
+
+# Cache for deals to avoid hitting Twitter API too frequently
+deals_cache = {
+    'data': None,
+    'timestamp': None,
+    'ttl': 300  # 5 minutes cache
+}
+
+@lru_cache(maxsize=1)
+def get_cached_deals():
+    """Get cached deals with LRU cache."""
+    return get_latest_deals(30)
+
+@app.route('/api/deals', methods=['GET'])
+def get_deals():
+    """Get latest deals from @dealztrends with caching."""
+    try:
+        current_time = datetime.now()
+        
+        # Check if cache is valid
+        if (deals_cache['data'] is not None and 
+            deals_cache['timestamp'] is not None and 
+            current_time - deals_cache['timestamp'] < timedelta(seconds=deals_cache['ttl'])):
+            return jsonify(deals_cache['data'])
+        
+        # Fetch fresh data
+        fresh_deals = get_latest_deals(30)
+        
+        # Update cache
+        deals_cache['data'] = fresh_deals
+        deals_cache['timestamp'] = current_time
+        
+        return jsonify(fresh_deals)
+        
+    except Exception as e:
+        print(f"Error fetching deals: {e}")
+        # Return cached data if available, otherwise empty array
+        if deals_cache['data'] is not None:
+            return jsonify(deals_cache['data'])
+        return jsonify([])
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint."""
+    return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
 
 if __name__ == '__main__':
     from waitress import serve
