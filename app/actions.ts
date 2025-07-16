@@ -2,22 +2,21 @@
 
 export async function scrapeProduct(query: string) {
   try {
-    const response = await fetch(`http://localhost:8000/search?q=${encodeURIComponent(query)}`, {
-      cache: 'no-store'
+    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/search?q=${encodeURIComponent(query)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
-
+    
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      const errorMessage = errorData?.detail || `Failed to fetch products. Status: ${response.status}`;
-      throw new Error(errorMessage);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-
-    return await response.json();
+    
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error("Scraping failed:", error);
-    if (error instanceof Error) {
-        throw new Error(error.message);
-    }
-    throw new Error("An unknown error occurred during scraping.");
+    console.error('Error scraping product:', error);
+    throw error;
   }
 }
