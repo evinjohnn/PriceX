@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Product } from "@/lib/types"
 import { ProductCard } from "@/components/product-card"
 import { Navbar } from "@/components/navbar"
+import Silk from "@/components/ui/backgrounds/Silk"
+import CurvedLoop from "@/components/ui/text-animations/CurvedLoop"
 
 interface SearchResults {
     amazon: Product[];
