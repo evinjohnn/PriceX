@@ -91,7 +91,7 @@ export default function SearchPage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <Navbar />
-            <Silk color="#f8fafc" speed={3} scale={2} noiseIntensity={0.8} />
+            <SilkBackground color="#f8fafc" speed={3} scale={2} noiseIntensity={0.8} />
             <main className="pt-24 pb-12">
                 <div className="container mx-auto px-4">
                     <motion.div 
