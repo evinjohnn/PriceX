@@ -100,7 +100,7 @@ const mockDeals: DealPost[] = [
 async function getDeals(): Promise<DealPost[]> {
   try {
     // Fetch from our own backend's new endpoint
-    const res = await fetch('http://localhost:8000/api/deals', {
+    const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/deals`, {
       next: { revalidate: 300 } // Revalidate data every 5 minutes
     });
 
