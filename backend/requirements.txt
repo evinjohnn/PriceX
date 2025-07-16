@@ -8,9 +8,5 @@ waitress
 requests
 celery
 redis
-google-generativeai
-playwright
-playwright-stealth
-boto3
-2captcha-python
 tweepy
+scraperapi-python
