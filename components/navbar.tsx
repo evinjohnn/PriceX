@@ -4,17 +4,13 @@
 
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { usePathname } from "next/navigation"
 import { motion } from "framer-motion"
-import FluidGlass from "@/components/ui/hover-effects/FluidGlass"
 
 const navigation = [
   { name: "Home", href: "/" },
+  { name: "Search", href: "/search" },
   { name: "Deals", href: "/deals" },
-  { name: "About", href: "/about" },
-  { name: "Contact", href: "/contact" },
-  { name: "Pricing", href: "/pricing" },
 ]
 
 export function Navbar() {
@@ -24,42 +20,52 @@ export function Navbar() {
     <motion.header
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, delay: 1.5 }}
-      className="fixed top-0 w-full border-b bg-white/50 backdrop-blur-xl z-50"
+      transition={{ duration: 0.8, type: "spring", stiffness: 60, damping: 15 }}
+      className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-fit"
     >
-      <nav className="container mx-auto">
-        <div className="flex h-12 items-center justify-between px-4">
-          {" "}
-          {/* Reduced height */}
-          <div className="flex-1 flex items-center justify-start space-x-6">
-            {" "}
-            {/* Added flex-1 and adjusted spacing */}
-            {navigation.map((item) => (
-              <Link
+      <nav className="relative">
+        <div className="
+          flex items-center justify-center px-8 py-3 
+          bg-white/10 backdrop-blur-xl border border-white/20 
+          rounded-full shadow-lg shadow-black/5
+          hover:bg-white/15 hover:border-white/30
+          transition-all duration-300 ease-out
+        ">
+          <div className="flex items-center space-x-8">
+            {navigation.map((item, index) => (
+              <motion.div
                 key={item.name}
-                href={item.href}
-                className={cn(
-                  "text-sm font-medium transition-colors hover:text-gray-900",
-                  pathname === item.href ? "text-gray-900" : "text-gray-500",
-                )}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index, duration: 0.5 }}
               >
-                {item.name}
-              </Link>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "relative px-4 py-2 text-sm font-medium transition-all duration-300 rounded-full",
+                    "hover:text-blue-600 hover:scale-105",
+                    pathname === item.href 
+                      ? "text-blue-600 bg-white/20 shadow-sm" 
+                      : "text-gray-700 hover:bg-white/10"
+                  )}
+                >
+                  {item.name}
+                  {pathname === item.href && (
+                    <motion.div
+                      layoutId="navbar-active"
+                      className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full -z-10"
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </Link>
+              </motion.div>
             ))}
           </div>
-          <div className="flex items-center gap-3">
-            {" "}
-            {/* Reduced gap */}
-            <FluidGlass intensity={0.2} speed={0.3}>
-              <Button variant="ghost" size="sm">
-                Sign in
-              </Button>
-            </FluidGlass>
-            <FluidGlass intensity={0.3} speed={0.3}>
-              <Button size="sm">Get Started</Button>
-            </FluidGlass>
-          </div>
         </div>
+        
+        {/* Subtle glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-pink-400/10 rounded-full blur-xl -z-10 opacity-60" />
       </nav>
     </motion.header>
   )
