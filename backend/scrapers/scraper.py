@@ -1,14 +1,5 @@
-"""
-Enterprise-Grade Web Scraping System with Multi-Tiered Anti-Blocking Architecture
+# backend/scrapers/scraper.py
 
-This module implements a sophisticated, resilient web scraping system with:
-- Tier 1: Stealth Playwright browser automation (primary)
-- Tier 2: AWS Lambda serverless IP rotation (fallback)
-- Tier 3: Automated CAPTCHA solving (final escalation)
-
-The system provides enterprise-grade reliability for scraping e-commerce sites
-like Amazon and Flipkart with advanced anti-detection capabilities.
-"""
 import asyncio
 import json
 import logging
@@ -18,20 +9,44 @@ import requests
 from typing import Optional, Dict, Any, List
 import boto3
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
-from playwright_stealth import stealth_async
+# CORRECTED: Importing the 'stealth' function directly.
+from playwright_stealth import stealth
 from bs4 import BeautifulSoup
 import re
+from urllib.parse import urlparse
+
+from config import config
+from captcha_solver import captcha_solver
+from database import add_product_if_not_exists, add_price_entry
+
+logging.basicConfig(level=getattr(logging, config.LOG_LEVEL), format=config.LOG_FORMAT)
+logger = logging.getLogger(__name__)
+
 class ScrapingError(Exception):
-    """Base exception for scraping errors."""
     pass
 
 class BlockedError(ScrapingError):
-    """Raised when scraping is blocked."""
     pass
 
 class CaptchaError(ScrapingError):
-    """Raised when CAPTCHA is encountered."""
     pass
+
+# --- Helper function to identify input type ---
+def is_url(string: str) -> bool:
+    """Checks if a string is a valid URL."""
+    try:
+        result = urlparse(string)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
+
+def get_platform_from_url(url: str) -> Optional[str]:
+    """Determines the platform (amazon or flipkart) from a URL."""
+    if 'amazon' in url:
+        return 'amazon'
+    if 'flipkart' in url:
+        return 'flipkart'
+    return None
 
 class EnterpriseScrapingSystem:
     """
@@ -172,8 +187,8 @@ class EnterpriseScrapingSystem:
             # Create new page
             page = await self.context.new_page()
             
-            # Apply stealth settings
-            await stealth_async(page)
+            # CORRECTED FUNCTION CALL
+            await stealth(page)
             
             # Add random delay before request
             await asyncio.sleep(random.uniform(config.MIN_REQUEST_DELAY, config.MAX_REQUEST_DELAY))
@@ -373,216 +388,205 @@ class EnterpriseScrapingSystem:
         except Exception as e:
             logger.error(f"Error closing browser: {e}")
 
-# Global scraper instance
 enterprise_scraper = EnterpriseScrapingSystem()
 
-from database import add_product_if_not_exists, add_price_entry
-from config import config
-from captcha_solver import captcha_solver
-from proxy_pool_manager import get_proxy_manager
-from utils import get_random_user_agent, get_common_headers, create_proxy_dict, ScrapingFailedError
-
-# Configure logging
-logging.basicConfig(level=getattr(logging, config.LOG_LEVEL), format=config.LOG_FORMAT)
-logger = logging.getLogger(__name__)
-
-def clean_text(text):
-    return re.sub(r'[^\d.]', '', text).strip() if text else ""
-
-# Wrapper function for backward compatibility
-async def scrape_with_proxy(url: str, max_retries: int = None) -> str:
-    """
-    Legacy wrapper for backward compatibility.
-    Now uses the enterprise scraping system.
-    """
-    return await enterprise_scraper.get_page_content_resiliently(url)
-
-async def process_amazon_search(query: str, max_products: int = 5):
-    """Enhanced Amazon search processing with enterprise scraping."""
-    logger.info(f"Processing Amazon search for: '{query}'")
-    
+# --- NEW: Logic to handle a single product page ---
+async def process_single_product_page(url: str, platform: str):
+    logger.info(f"Processing single product page for platform '{platform}': {url}")
     try:
-        search_url = f"https://www.amazon.in/s?k={query.replace(' ', '+')}"
-        html = await enterprise_scraper.get_page_content_resiliently(search_url)
+        html = await enterprise_scraper.get_page_content_resiliently(url)
+        soup = BeautifulSoup(html, 'html.parser')
         
+        # This is a simplified example; selectors for single product pages are often different
+        # from search result pages. For now, we'll assume they are similar or reuse some.
+        # A robust solution would have dedicated selectors in config.py for product pages.
+        
+        if platform == 'amazon':
+            # Example selectors for an Amazon product page
+            title_el = soup.select_one('#productTitle')
+            price_el = soup.select_one('.a-price-whole')
+            image_el = soup.select_one('#landingImage')
+            asin_match = re.search(r'/dp/([A-Z0-9]{10})', url)
+            asin = asin_match.group(1) if asin_match else None
+            
+            if not all([title_el, price_el, image_el, asin]):
+                logger.error("Could not extract all required fields from Amazon product page.")
+                return
+
+            title = title_el.text.strip()
+            price = enterprise_scraper.clean_text(price_el.text)
+            image_url = image_el.get('src')
+            
+        elif platform == 'flipkart':
+            # Example selectors for a Flipkart product page
+            title_el = soup.select_one('span.B_NuCI')
+            price_el = soup.select_one('div._30jeq3._16Jk6d')
+            image_el = soup.select_one('img._396cs4._2amPTt._3qGmMb')
+            pid_match = re.search(r'pid=([A-Z0-9]+)', url)
+            unique_id = pid_match.group(1) if pid_match else url
+            
+            if not all([title_el, price_el, image_el]):
+                logger.error("Could not extract all required fields from Flipkart product page.")
+                return
+
+            title = title_el.text.strip()
+            price = enterprise_scraper.clean_text(price_el.text)
+            image_url = image_el.get('src')
+            
+        else:
+            return
+
+        price_float = float(price)
+        product_id = add_product_if_not_exists(asin or unique_id, title, url)
+        if product_id:
+            add_price_entry(product_id, price_float, "In Stock", image_url)
+            logger.info(f"Saved single product: {title[:50]}...")
+
+    except Exception as e:
+        logger.error(f"Error processing single product page {url}: {e}", exc_info=True)
+    finally:
+        await enterprise_scraper.close()
+
+# --- MODIFIED: Search processing functions ---
+async def process_amazon_search(query: str, max_products: int = 5):
+    logger.info(f"Processing Amazon search for: '{query}'")
+    search_url = f"https://www.amazon.in/s?k={query.replace(' ', '+')}"
+    try:
+        html = await enterprise_scraper.get_page_content_resiliently(search_url)
         soup = BeautifulSoup(html, 'html.parser')
         selectors = config.get_site_selectors('amazon')
         results = soup.select(selectors['search_results'])
         
-        logger.info(f"Found {len(results)} products on Amazon page")
+        if not results:
+            logger.warning(f"No search results found on Amazon for '{query}'. The page might be blocked or selectors are outdated.")
+            return
+
+        logger.info(f"Found {len(results)} potential products on Amazon page.")
         
         products_processed = 0
         for item in results:
-            if products_processed >= max_products:
-                break
-                
+            if products_processed >= max_products: break
             try:
                 asin = item.get('data-asin')
-                if not asin:
-                    continue
+                if not asin: continue
                 
-                title = item.select_one(selectors['title'])
-                price = item.select_one(selectors['price'])
-                url = item.select_one(selectors['url'])
-                image = item.select_one(selectors['image'])
+                title_el = item.select_one(selectors['title'])
+                price_el = item.select_one(selectors['price'])
+                url_el = item.select_one(selectors['url'])
+                image_el = item.select_one(selectors['image'])
                 
-                if not all([title, price, url, image]):
-                    continue
+                if not all([title_el, price_el, url_el, image_el]): continue
                 
-                # Clean and validate data
-                title_text = title.text.strip()
-                price_text = enterprise_scraper.clean_text(price.text)
+                title_text = title_el.text.strip()
+                price_text = enterprise_scraper.clean_text(price_el.text)
+                if not title_text or not price_text: continue
                 
-                if not title_text or not price_text:
-                    continue
+                price_float = float(price_text)
+                product_url = f"https://www.amazon.in{url_el['href']}"
+                image_url = image_el.get('src', '')
                 
-                try:
-                    price_float = float(price_text)
-                except ValueError:
-                    continue
-                
-                product_url = f"https://www.amazon.in{url['href']}"
-                image_url = image.get('src', '')
-                
-                # Save to database
                 product_id = add_product_if_not_exists(asin, title_text, product_url)
                 if product_id:
                     add_price_entry(product_id, price_float, "In Stock", image_url)
                     products_processed += 1
                     logger.info(f"Saved Amazon product: {title_text[:50]}...")
-                
             except Exception as e:
-                logger.error(f"Error processing Amazon product: {e}")
+                logger.error(f"Error processing an Amazon product item: {e}", exc_info=True)
                 continue
         
-        logger.info(f"Successfully processed {products_processed} Amazon products")
-        
-    except ScrapingError as e:
-        logger.error(f"Amazon scraping failed: {e}")
+        logger.info(f"Successfully processed {products_processed} Amazon products.")
     except Exception as e:
-        logger.error(f"Unexpected error in Amazon search: {e}")
+        logger.error(f"Amazon scraping failed for query '{query}': {e}", exc_info=True)
     finally:
-        # Clean up browser resources
         await enterprise_scraper.close()
 
 async def process_flipkart_search(query: str, max_products: int = 5):
-    """Enhanced Flipkart search processing with enterprise scraping."""
     logger.info(f"Processing Flipkart search for: '{query}'")
-    
+    search_url = f"https://www.flipkart.com/search?q={query.replace(' ', '+')}"
     try:
-        search_url = f"https://www.flipkart.com/search?q={query.replace(' ', '+')}"
         html = await enterprise_scraper.get_page_content_resiliently(search_url)
-        
         soup = BeautifulSoup(html, 'html.parser')
         selectors = config.get_site_selectors('flipkart')
         
-        # Try multiple selectors for product containers
         results = []
         for selector in selectors['search_results']:
             results = soup.select(selector)
-            if results:
-                break
+            if results: break
         
-        logger.info(f"Found {len(results)} products on Flipkart page")
+        if not results:
+            logger.warning(f"No search results found on Flipkart for '{query}'. The page might be blocked or selectors are outdated.")
+            return
+
+        logger.info(f"Found {len(results)} potential products on Flipkart page.")
         
         products_processed = 0
         for item in results:
-            if products_processed >= max_products:
-                break
-                
+            if products_processed >= max_products: break
             try:
-                # Try multiple selectors for each element
-                title_element = None
-                for selector in selectors['title']:
-                    title_element = item.select_one(selector)
-                    if title_element:
-                        break
+                title_el, price_el, url_el, image_el = None, None, None, None
+                for s in selectors['title']:
+                    title_el = item.select_one(s)
+                    if title_el: break
+                for s in selectors['price']:
+                    price_el = item.select_one(s)
+                    if price_el: break
+                for s in selectors['url']:
+                    url_el = item.select_one(s)
+                    if url_el: break
+                for s in selectors['image']:
+                    image_el = item.select_one(s)
+                    if image_el: break
                 
-                price_element = None
-                for selector in selectors['price']:
-                    price_element = item.select_one(selector)
-                    if price_element:
-                        break
+                if not all([title_el, price_el, url_el, image_el]): continue
                 
-                url_element = None
-                for selector in selectors['url']:
-                    url_element = item.select_one(selector)
-                    if url_element:
-                        break
+                title = title_el.get_text(strip=True)
+                price_text = enterprise_scraper.clean_text(price_el.get_text(strip=True))
+                if not title or not price_text: continue
                 
-                image_element = None
-                for selector in selectors['image']:
-                    image_element = item.select_one(selector)
-                    if image_element:
-                        break
+                price_float = float(price_text)
+                product_url = f"https://www.flipkart.com{url_el['href']}"
+                image_url = image_el.get('src', '')
                 
-                if not all([title_element, price_element, url_element, image_element]):
-                    continue
+                unique_id_match = re.search(r'pid=([A-Z0-9]+)', product_url)
+                unique_id = unique_id_match.group(1) if unique_id_match else product_url
                 
-                # Extract and clean data
-                title = title_element.get_text(strip=True)
-                price_text = enterprise_scraper.clean_text(price_element.get_text(strip=True))
-                
-                if not title or not price_text:
-                    continue
-                
-                try:
-                    price_float = float(price_text)
-                except ValueError:
-                    continue
-                
-                product_url = f"https://www.flipkart.com{url_element['href']}"
-                image_url = image_element.get('src', '')
-                
-                # Extract unique ID from URL
-                unique_id = product_url.split('?pid=')[1].split('&')[0] if '?pid=' in product_url else product_url
-                
-                # Save to database
                 product_id = add_product_if_not_exists(unique_id, title, product_url)
                 if product_id:
                     add_price_entry(product_id, price_float, "In Stock", image_url)
                     products_processed += 1
                     logger.info(f"Saved Flipkart product: {title[:50]}...")
-                
             except Exception as e:
-                logger.error(f"Error processing Flipkart product: {e}")
+                logger.error(f"Error processing a Flipkart product item: {e}", exc_info=True)
                 continue
         
-        logger.info(f"Successfully processed {products_processed} Flipkart products")
-        
-    except ScrapingError as e:
-        logger.error(f"Flipkart scraping failed: {e}")
+        logger.info(f"Successfully processed {products_processed} Flipkart products.")
     except Exception as e:
-        logger.error(f"Unexpected error in Flipkart search: {e}")
+        logger.error(f"Flipkart scraping failed for query '{query}': {e}", exc_info=True)
     finally:
-        # Clean up browser resources
         await enterprise_scraper.close()
 
-# Synchronous wrappers for Celery compatibility
-def sync_process_amazon_search(query: str, max_products: int = 5):
-    """Synchronous wrapper for Amazon search processing."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        loop.run_until_complete(process_amazon_search(query, max_products))
-    finally:
-        loop.close()
+# --- NEW: Main task orchestrator ---
+async def process_scrape_task(query: str):
+    """Determines if the query is a URL or a search term and calls the appropriate function."""
+    if is_url(query):
+        platform = get_platform_from_url(query)
+        if platform:
+            await process_single_product_page(query, platform)
+        else:
+            logger.warning(f"Received a URL from an unsupported platform: {query}")
+    else:
+        # It's a search term, so search both platforms
+        # We run them concurrently for speed
+        await asyncio.gather(
+            process_amazon_search(query),
+            process_flipkart_search(query)
+        )
 
-def sync_process_flipkart_search(query: str, max_products: int = 5):
-    """Synchronous wrapper for Flipkart search processing."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+# --- MODIFIED: Synchronous wrapper for Celery ---
+def sync_process_scrape_task(query: str):
+    """Synchronous wrapper for the main scrape task orchestrator."""
+    # Using asyncio.run() is simpler and safer for top-level async calls
     try:
-        loop.run_until_complete(process_flipkart_search(query, max_products))
-    finally:
-        loop.close()
-
-# Update exports for backward compatibility
-__all__ = [
-    'scrape_with_proxy',
-    'process_amazon_search',
-    'process_flipkart_search',
-    'sync_process_amazon_search',
-    'sync_process_flipkart_search',
-    'enterprise_scraper'
-]
+        asyncio.run(process_scrape_task(query))
+    except Exception as e:
+        logger.error(f"An error occurred in the sync wrapper for query '{query}': {e}", exc_info=True)

@@ -1,3 +1,5 @@
+// components/search.tsx
+
 "use client"
 
 import { useState, useEffect, type KeyboardEvent } from "react"
@@ -5,16 +7,17 @@ import { Command } from "cmdk"
 import { SearchIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useDebounce } from "@/hooks/use-debounce" // <-- Import the hook
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import { useDebounce } from "@/hooks/use-debounce"
 
 export function Search() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname() // Get the current page path
   const [value, setValue] = useState(searchParams.get("q") || "")
   
-  // Use the debounce hook with a 500ms delay
-  const debouncedSearch = useDebounce(value, 500);
+  // CORRECTED: Increased debounce delay to a more comfortable 1000ms (1 second)
+  const debouncedSearch = useDebounce(value, 1000);
 
   const handleSearch = () => {
     if (value.trim()) {
@@ -23,11 +26,13 @@ export function Search() {
   }
 
   useEffect(() => {
-    // Only trigger search when the debounced value changes and is not empty
-    if (debouncedSearch.trim()) {
+    // CORRECTED: Only trigger automatic search on the /search page itself.
+    // On the homepage ('/'), the user must press Enter or click the button.
+    const isSearchPage = pathname === '/search';
+    if (isSearchPage && debouncedSearch.trim()) {
       router.push(`/search?q=${encodeURIComponent(debouncedSearch.trim())}`);
     }
-  }, [debouncedSearch, router]);
+  }, [debouncedSearch, router, pathname]);
 
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {

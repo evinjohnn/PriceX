@@ -1,3 +1,5 @@
+// components/navbar.tsx
+
 "use client"
 
 import Link from "next/link"
@@ -8,6 +10,7 @@ import { motion } from "framer-motion"
 
 const navigation = [
   { name: "Home", href: "/" },
+  { name: "Deals", href: "/deals" },
   { name: "About", href: "/about" },
   { name: "Contact", href: "/contact" },
   { name: "Pricing", href: "/pricing" },
@@ -56,4 +59,3 @@ export function Navbar() {
     </motion.header>
   )
 }
-

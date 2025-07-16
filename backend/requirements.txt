@@ -13,3 +13,4 @@ playwright
 playwright-stealth
 boto3
 2captcha-python
+tweepy
