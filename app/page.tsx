@@ -3,9 +3,12 @@
 import { Navbar } from "@/components/navbar"
 import { Search } from "@/components/search"
 import { ShoppingCart, Shield, Zap } from "lucide-react"
-import Image from "next/image"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import TextPressure from "@/components/ui/text-animations/TextPressure"
+import Silk from "@/components/ui/backgrounds/Silk"
+import CurvedLoop from "@/components/ui/text-animations/CurvedLoop"
+import FluidGlass from "@/components/ui/hover-effects/FluidGlass"
 
 export default function Home() {
   return (
