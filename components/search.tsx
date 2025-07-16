@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useDebounce } from "@/hooks/use-debounce"
+import ShinyText from "@/components/ui/text-animations/ShinyText"
 
 export function Search() {
   const router = useRouter()
