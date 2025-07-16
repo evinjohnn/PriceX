@@ -57,13 +57,24 @@ export function Search() {
       <div className="relative">
         <Command className="relative z-50 overflow-visible bg-white shadow-[0_1px_6px_rgba(32,33,36,.28)] rounded-full border-0">
           <div className="flex items-center px-6">
-            <Command.Input
-              value={value}
-              onValueChange={setValue}
-              onKeyDown={handleKeyDown}
-              placeholder="Search for products on Amazon and Flipkart..."
-              className="flex-1 h-14 px-4 text-base bg-transparent outline-none placeholder:text-gray-400"
-            />
+            <div className="flex-1 relative">
+              <Command.Input
+                value={value}
+                onValueChange={setValue}
+                onKeyDown={handleKeyDown}
+                placeholder=""
+                className="flex-1 h-14 px-4 text-base bg-transparent outline-none w-full"
+              />
+              {!value && (
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                  <ShinyText 
+                    text="Search for products on Amazon and Flipkart..." 
+                    className="text-gray-400"
+                    speed={3}
+                  />
+                </div>
+              )}
+            </div>
             <Button
               onClick={handleSearch}
               size="icon"
