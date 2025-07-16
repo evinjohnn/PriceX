@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className={`scroll-smooth ${customLogoFont.variable}`}>
       <body className={inter.className}>
         <LoadingProvider>{children}</LoadingProvider>
       </body>
