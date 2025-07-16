@@ -1,21 +1,27 @@
 import { Inter } from "next/font/google"
+import localFont from 'next/font/local'
 import "./globals.css"
 import { LoadingProvider } from "@/context/loading-context"
 import dynamic from "next/dynamic"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
-// Using system font for logo until custom font is provided
-const customLogoFont = {
-  variable: "--font-logo",
-}
+// Correctly load the local font
+const customLogoFont = localFont({
+  src: './fonts/font.woff2',
+  variable: '--font-logo',
+})
 
 export const metadata = {
   title: "PriceX - Smart Price Comparison",
   description: "Compare prices across multiple e-commerce platforms instantly",
 }
 
-const FluidGlass = dynamic(() => import("@/components/FluidGlass/FluidGlass"), { ssr: false })
+// The FluidGlass component is causing a crash due to dependency issues
+// and missing 3D model assets. It has been commented out to allow the app to run.
+// const FluidGlass = dynamic(() => import("@/components/FluidGlass/FluidGlass"), { ssr: false })
 
 export default function RootLayout({
   children,
@@ -23,9 +29,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`scroll-smooth ${customLogoFont.variable}`}>
-      <body className={inter.className}>
-        {/* 3D FluidGlass cursor-following effect overlay */}
+    <html lang="en" className={`${inter.variable} ${customLogoFont.variable}`} suppressHydrationWarning>
+      <body>
+        {/*
         <div style={{ height: "100vh", width: "100vw", position: "fixed", top: 0, left: 0, pointerEvents: "none", zIndex: 9999 }}>
           <FluidGlass
             mode="lens"
@@ -38,9 +44,17 @@ export default function RootLayout({
             }}
           />
         </div>
-        <LoadingProvider>{children}</LoadingProvider>
+        */}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <LoadingProvider>{children}</LoadingProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   )
 }
-

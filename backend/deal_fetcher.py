@@ -25,7 +25,7 @@ class DealFetcher:
     
     def __init__(self):
         self.client = tweepy.Client(bearer_token=X_BEARER_TOKEN)
-        self.target_username = 'dealztrends'
+        self.target_username = 'dealztrendz'
     
     def extract_price_info(self, text: str) -> Dict[str, Optional[str]]:
         """

@@ -21,7 +21,7 @@ export function ScrollStack({ children, className }: ScrollStackProps) {
   return (
     <div ref={containerRef} className={cn("relative", className)}>
       {children.map((child, index) => {
-        const start = index / children.length
+        const start = 0
         const end = (index + 1) / children.length
         
         return (
@@ -30,7 +30,7 @@ export function ScrollStack({ children, className }: ScrollStackProps) {
             i={index} 
             progress={scrollYProgress} 
             range={[start, end]}
-            targetScale={1 - ((children.length - index) * 0.05)}
+            targetScale={0.85}
           >
             {child}
           </Card>
@@ -50,18 +50,23 @@ interface CardProps {
 
 const Card = ({ i, progress, range, targetScale, children }: CardProps) => {
   const scale = useTransform(progress, range, [1, targetScale])
-  const y = useTransform(progress, range, [0, -25])
+  const y = useTransform(progress, range, [0, -200])
+  const top = `${i * 30}px`;
 
   return (
     <motion.div
       style={{
         scale,
         y,
-        top: `calc(-5vh + ${i * 25}px)`,
+        top,
+        rotate: 0,
+        filter: 'blur(0px)'
       }}
-      className="sticky h-screen flex items-center justify-center"
+      className="sticky h-screen flex items-center justify-center z-30"
     >
-      {children}
+      <div className="w-full max-w-2xl bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-lg shadow-black/10 p-0">
+        {children}
+      </div>
     </motion.div>
   )
 }

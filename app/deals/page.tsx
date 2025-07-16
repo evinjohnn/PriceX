@@ -4,7 +4,8 @@ import { Navbar } from "@/components/navbar";
 import { DealCard } from "@/components/deal-card";
 import { ScrollStack } from "@/components/ui/scroll-stack";
 import { Toaster } from "@/components/ui/toaster";
-import SilkBackground from "@/components/ui/backgrounds/SilkBackground";
+import dynamic from "next/dynamic";
+const Dither = dynamic(() => import("@/components/ui/backgrounds/Dither/Dither"), { ssr: false });
 
 // Define the type for a single deal post
 interface DealPost {
@@ -121,17 +122,9 @@ export default async function DealsPage() {
   const deals = await getDeals();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-hidden">
+    <div className="min-h-screen overflow-hidden">
       <Navbar />
-      
-      {/* Animated background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-2000" />
-      </div>
-      
-      <SilkBackground color="#1e1b4b" speed={2} scale={3} noiseIntensity={0.6} />
+      <Dither />
       
       <main className="relative pt-32 pb-12">
         <div className="container mx-auto px-4">
@@ -139,7 +132,7 @@ export default async function DealsPage() {
           <div className="text-center mb-16 relative">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent h-px top-1/2 transform -translate-y-1/2" />
             
-            <h1 className="relative inline-block text-6xl font-bold tracking-tight mb-6 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h1 className="relative inline-block text-6xl font-logo font-bold tracking-tight mb-6 text-white">
               CYBER DEALS
             </h1>
             

@@ -5,40 +5,20 @@ import { Search } from "@/components/search"
 import { ShoppingCart, Shield, Zap } from "lucide-react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import TextPressure from "@/components/ui/text-animations/TextPressure"
-import SilkBackground from "@/components/ui/backgrounds/SilkBackground"
-import CurvedLoop from "@/components/ui/text-animations/CurvedLoop"
-import FluidGlass from "@/components/ui/hover-effects/FluidGlass"
+import dynamic from "next/dynamic"
+const Dither = dynamic(() => import("@/components/ui/backgrounds/Dither/Dither"), { ssr: false })
 
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col">
       <Navbar />
-      <SilkBackground color="#f8fafc" speed={4} scale={0.75} noiseIntensity={0.8} />
+      <Dither />
       <section className="flex-1 flex flex-col items-center justify-center px-4 pb-32 pt-32 relative overflow-hidden">
 
-        <div className="flex flex-col items-center justify-center w-full mb-12 mt-12">
-          <motion.div
-            initial={{ scale: 3, y: -100, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            transition={{
-              duration: 1.5,
-              type: "spring",
-              stiffness: 70,
-              damping: 20,
-            }}
-            className="flex justify-center w-full max-w-lg h-32"
-          >
-            <TextPressure 
-              text="PriceX"
-              textColor="#1f2937"
-              minFontSize={60}
-              weight={true}
-              width={true}
-              italic={false}
-              className="w-full font-logo"
-            />
-          </motion.div>
+        <div className="flex flex-col items-center justify-center w-full mb-0 mt-0">
+          <div className="flex justify-center w-full h-28">
+            <span className="font-logo text-8xl text-gray-900 dark:text-white tracking-tight select-none">PriceX</span>
+          </div>
         </div>
 
         <Search />
@@ -82,15 +62,13 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.8 + index * 0.1 }}
             >
-              <FluidGlass intensity={0.3} speed={0.4}>
-                <motion.div
-                  className={cn("p-6 rounded-2xl transition-all duration-300", feature.bgColor, feature.glowColor)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <div className={feature.iconColor}>{feature.icon}</div>
-                </motion.div>
-              </FluidGlass>
+              <motion.div
+                className={cn("p-6 rounded-2xl transition-all duration-300", feature.bgColor, feature.glowColor)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <div className={feature.iconColor}>{feature.icon}</div>
+              </motion.div>
               <h3 className="font-semibold">{feature.title}</h3>
               <p className="text-gray-500">{feature.description}</p>
             </motion.div>
@@ -98,15 +76,7 @@ export default function Home() {
         </motion.div>
         
         {/* Bottom Curved Banner */}
-        <CurvedLoop 
-          marqueeText="🔥 Best Deals • 💰 Save More • 🛒 Shop Smart • ⚡ Flash Sale • 🎯 Top Prices • 🏆 Trending Now "
-          speed={1.5}
-          curveAmount={300}
-          inverted={true}
-          className="fill-gray-800"
-        />
       </section>
     </main>
   )
 }
-

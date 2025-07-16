@@ -12,7 +12,6 @@ import { Product } from "@/lib/types"
 import { ProductCard } from "@/components/product-card"
 import { Navbar } from "@/components/navbar"
 import SilkBackground from "@/components/ui/backgrounds/SilkBackground"
-import CurvedLoop from "@/components/ui/text-animations/CurvedLoop"
 
 interface SearchResults {
     amazon: Product[];
@@ -152,13 +151,6 @@ export default function SearchPage() {
                     )}
                 </div>
             </main>
-            <CurvedLoop 
-                marqueeText="🔥 Best Deals • 💰 Save More • 🛒 Shop Smart • ⚡ Flash Sale • 🎯 Top Prices • 🏆 Trending Now "
-                speed={1.5}
-                curveAmount={300}
-                inverted={true}
-                className="fill-gray-800"
-            />
             <Toaster />
         </div>
     )
