@@ -14,10 +14,8 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col">
       <Navbar />
+      <Silk color="#f8fafc" speed={3} scale={2} noiseIntensity={0.8} />
       <section className="flex-1 flex flex-col items-center justify-center px-4 pb-32 pt-24 relative overflow-hidden">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-rose-100/50 via-transparent to-blue-100/50 -z-10" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] -z-10" />
 
         <div className="flex flex-col items-center justify-center w-full mb-12 mt-12">
           <motion.div
@@ -29,14 +27,16 @@ export default function Home() {
               stiffness: 70,
               damping: 20,
             }}
-            className="flex justify-center w-full"
+            className="flex justify-center w-full max-w-lg h-32"
           >
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-ix9wmdzl87BUdMoYcW3VfBgQQBl7dv.png"
-              alt="PriceX Logo"
-              width={400}
-              height={133}
-              priority
+            <TextPressure 
+              text="PriceX"
+              textColor="#1f2937"
+              minFontSize={60}
+              weight={true}
+              width={true}
+              italic={false}
+              className="w-full"
             />
           </motion.div>
         </div>
