@@ -9,4 +9,3 @@ requests
 celery
 redis
 tweepy
-scraperapi-python
