@@ -15,7 +15,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col">
       <Navbar />
       <SilkBackground color="#f8fafc" speed={3} scale={2} noiseIntensity={0.8} />
-      <section className="flex-1 flex flex-col items-center justify-center px-4 pb-32 pt-24 relative overflow-hidden">
+      <section className="flex-1 flex flex-col items-center justify-center px-4 pb-32 pt-32 relative overflow-hidden">
 
         <div className="flex flex-col items-center justify-center w-full mb-12 mt-12">
           <motion.div
