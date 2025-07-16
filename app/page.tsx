@@ -82,18 +82,29 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.8 + index * 0.1 }}
             >
-              <motion.div
-                className={cn("p-6 rounded-2xl transition-all duration-300", feature.bgColor, feature.glowColor)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <div className={feature.iconColor}>{feature.icon}</div>
-              </motion.div>
+              <FluidGlass intensity={0.3} speed={0.4}>
+                <motion.div
+                  className={cn("p-6 rounded-2xl transition-all duration-300", feature.bgColor, feature.glowColor)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className={feature.iconColor}>{feature.icon}</div>
+                </motion.div>
+              </FluidGlass>
               <h3 className="font-semibold">{feature.title}</h3>
               <p className="text-gray-500">{feature.description}</p>
             </motion.div>
           ))}
         </motion.div>
+        
+        {/* Bottom Curved Banner */}
+        <CurvedLoop 
+          marqueeText="🔥 Best Deals • 💰 Save More • 🛒 Shop Smart • ⚡ Flash Sale • 🎯 Top Prices • 🏆 Trending Now "
+          speed={1.5}
+          curveAmount={300}
+          inverted={true}
+          className="fill-gray-800"
+        />
       </section>
     </main>
   )
