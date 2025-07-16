@@ -22,8 +22,8 @@ interface TextPressureProps {
 
 const TextPressure: React.FC<TextPressureProps> = ({
   text = 'PriceX',
-  fontFamily = 'Compressa VF',
-  fontUrl = 'https://res.cloudinary.com/dr6lvwubh/raw/upload/v1529908256/CompressaPRO-GX.woff2',
+  fontFamily = 'var(--font-logo)',
+  fontUrl = undefined, // No longer needed since we're using Next.js font loading
   width = true,
   weight = true,
   italic = true,
