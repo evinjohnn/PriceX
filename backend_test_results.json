@@ -1,0 +1,45 @@
+{
+  "timestamp": "2025-07-16T08:44:02.663668",
+  "total_tests": 6,
+  "passed_tests": 3,
+  "success_rate": 50.0,
+  "results": [
+    {
+      "test": "Health Check",
+      "status": "\u2705 PASS",
+      "message": "Backend is healthy",
+      "timestamp": "2025-07-16T08:43:40.797157"
+    },
+    {
+      "test": "Search Endpoint",
+      "status": "\u274c FAIL",
+      "message": "Connection error: HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=15)",
+      "timestamp": "2025-07-16T08:43:56.813495"
+    },
+    {
+      "test": "Results Endpoint (Valid Query)",
+      "status": "\u274c FAIL",
+      "message": "HTTP 500",
+      "timestamp": "2025-07-16T08:43:58.539522",
+      "response_data": "<!doctype html>\n<html lang=en>\n<title>500 Internal Server Error</title>\n<h1>Internal Server Error</h1>\n<p>The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.</p>\n"
+    },
+    {
+      "test": "Deals Endpoint",
+      "status": "\u2705 PASS",
+      "message": "Deals endpoint working (empty result with demo keys)",
+      "timestamp": "2025-07-16T08:43:59.654576"
+    },
+    {
+      "test": "Database Connection",
+      "status": "\u274c FAIL",
+      "message": "Database query failed: HTTP 500",
+      "timestamp": "2025-07-16T08:44:00.660128"
+    },
+    {
+      "test": "CORS Headers",
+      "status": "\u2705 PASS",
+      "message": "CORS headers present",
+      "timestamp": "2025-07-16T08:44:01.663182"
+    }
+  ]
+}
