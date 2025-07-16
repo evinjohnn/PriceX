@@ -157,11 +157,6 @@ const TextPressure: React.FC<TextPressureProps> = ({
       className="relative w-full h-full overflow-hidden bg-transparent"
     >
       <style>{`
-        @font-face {
-          font-family: '${fontFamily}';
-          src: url('${fontUrl}');
-          font-style: normal;
-        }
         .stroke span {
           position: relative;
           color: ${textColor};
