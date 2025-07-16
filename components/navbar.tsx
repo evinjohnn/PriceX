@@ -50,10 +50,14 @@ export function Navbar() {
           <div className="flex items-center gap-3">
             {" "}
             {/* Reduced gap */}
-            <Button variant="ghost" size="sm">
-              Sign in
-            </Button>
-            <Button size="sm">Get Started</Button>
+            <FluidGlass intensity={0.2} speed={0.3}>
+              <Button variant="ghost" size="sm">
+                Sign in
+              </Button>
+            </FluidGlass>
+            <FluidGlass intensity={0.3} speed={0.3}>
+              <Button size="sm">Get Started</Button>
+            </FluidGlass>
           </div>
         </div>
       </nav>
