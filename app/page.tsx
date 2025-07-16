@@ -36,7 +36,7 @@ export default function Home() {
               weight={true}
               width={true}
               italic={false}
-              className="w-full"
+              className="w-full font-logo"
             />
           </motion.div>
         </div>
