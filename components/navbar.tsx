@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { usePathname } from "next/navigation"
 import { motion } from "framer-motion"
+import FluidGlass from "@/components/ui/hover-effects/FluidGlass"
 
 const navigation = [
   { name: "Home", href: "/" },
