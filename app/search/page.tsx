@@ -40,7 +40,7 @@ export default function SearchPage() {
 
         pollingIntervalRef.current = setInterval(async () => {
             try {
-                const res = await fetch(`http://localhost:8000/results?q=${encodeURIComponent(searchQuery)}`);
+                const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/results?q=${encodeURIComponent(searchQuery)}`);
                 if (res.status === 200) {
                     const data = await res.json();
                     if (data.amazon.length > 0 || data.flipkart.length > 0) {
