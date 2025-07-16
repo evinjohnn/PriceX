@@ -17,12 +17,7 @@ export function Navbar() {
   const pathname = usePathname()
 
   return (
-    <motion.header
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, type: "spring", stiffness: 60, damping: 15 }}
-      className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-fit"
-    >
+    <header className="w-full flex justify-center items-start pt-6 pb-2 z-50">
       <nav className="relative">
         <div className="
           flex items-center justify-center px-8 py-3 
@@ -67,6 +62,6 @@ export function Navbar() {
         {/* Subtle glow effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-pink-400/10 rounded-full blur-xl -z-10 opacity-60" />
       </nav>
-    </motion.header>
+    </header>
   )
 }
