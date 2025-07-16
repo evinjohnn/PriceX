@@ -9,6 +9,7 @@ const customLogoFont = localFont({
   src: "../fonts/font.woff2",
   variable: "--font-logo",
   display: "swap",
+  fallback: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Arial", "sans-serif"],
 })
 
 export const metadata = {
