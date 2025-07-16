@@ -5,19 +5,11 @@ import { LoadingProvider } from "@/context/loading-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
-const customLogoFont = localFont({
-  src: [
-    {
-      path: "../fonts/font.woff2",
-      weight: "100 900",
-      style: "normal",
-    },
-  ],
+// Temporarily using system font until custom font is provided
+const customLogoFont = {
   variable: "--font-logo",
-  display: "swap",
-  fallback: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Arial", "sans-serif"],
-  preload: false, // Don't preload since we're using a placeholder
-})
+  className: "font-logo",
+}
 
 export const metadata = {
   title: "PriceX - Smart Price Comparison",
